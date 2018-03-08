@@ -1,0 +1,30 @@
+---
+version: '3.0'
+services:
+  # Service to use with run migration just after data was ingested to elasticsearch2
+  grafana-ctl:
+    build: .
+    depends_on:
+    - grafana
+    environment:
+      GRAFANA_WAIT_TIMEOUT: 30
+    # Default environment of docker should be work with this
+    #   GRAFANA_ENDPOINT: "http://grafana:3000"
+    #   # ENV GRAFANA_AUTH_BEARER:
+    #   GRAFANA_AUTH_USERPASSWD: "admin:admin1234"
+    volumes:
+      - ./test:/data
+    command:
+    - new-users
+    - --path
+    - /data/users
+    - new-datasources
+    - --path
+    - /data/datasources
+    - import-dashboards
+    - --path
+    - /data/dashboards
+  grafana:
+    image: grafana/grafana:4.6.3
+    ports:
+    - 3000:3000
