@@ -106,7 +106,7 @@ ccurl(){
   local fileInput="$2"
 
   echo "       - curl -X$method -d @${fileInput} ${url}"
-  echo "--------"
+  echo "       --------"
 
   if [ -n "${GRAFANA_AUTH_BEARER}" ]
   then
@@ -143,13 +143,13 @@ ccurl(){
       "${url}" \
     | jq -C '.'
   fi
-  echo "--------"
+  echo "       --------"
 }
 
 newDatasources(){
   while [ -n "$1" ]
   do
-    echo "* Uploading datasource from file $1"
+    echo "+ Uploading datasource from file $1"
     ccurl "/api/datasources" "$1"
     shift
   done
@@ -158,7 +158,7 @@ newDatasources(){
 importDashboards(){
   while [ -n "$1" ]
   do
-    echo "* Uploading dahsboard from file $1"
+    echo "+ Uploading dahsboard from file $1"
     ccurl "/api/dashboards/import" "$1"
     shift
   done
@@ -167,7 +167,7 @@ importDashboards(){
 newUsers(){
   while [ -n "$1" ]
   do
-    echo "* Uploading user from file $1"
+    echo "+ Uploading user from file $1"
     ccurl "/api/admin/users" "$1"
     shift
   done
@@ -190,11 +190,14 @@ newUsers(){
 #   argumentes procesed
 parseAndRunJFP(){
   local commandName="$1"
+  echo "* ${commandName} block begin"
   # Parsing options for this command and execute
   if [ -z "$2" ]
   then
-    echo "Command '${commandName}' without options"
-    usage
+    echo ""
+    echo "ERROR: Command '${commandName}' without options"
+    echo ""
+    echo "Run with -h option for help"
     exit 1
   fi
   shift
@@ -211,8 +214,10 @@ parseAndRunJFP(){
       --json )
         if [ -z "$2" ]
         then
-          echo "Option --json in ${commandName} command without payload"
-          usage
+          echo ""
+          echo "ERROR: Option --json in ${commandName} command without payload"
+          echo ""
+          echo "Run with -h option for help"
           exit 1
         fi
         fileTemp="$(mktemp)"
@@ -222,8 +227,10 @@ parseAndRunJFP(){
       --file )
         if [[ -z "$2" || ! -f "$2" ]]
         then
-          echo "Option --file in ${commandName} command without valid filename"
-          usage
+          echo ""
+          echo "ERROR: Option --file in ${commandName} command without valid filename ($2)"
+          echo ""
+          echo "Run with -h option for help"
           exit 1
         fi
         fileList[$index]="$2"
@@ -231,11 +238,13 @@ parseAndRunJFP(){
       --path )
         if [[ -z "$2" || ! -d "$2" ]]
         then
-          echo "Option --path in ${commandName} command without valid directory name ($2)"
-          usage
+          echo ""
+          echo "ERROR: Option --path in ${commandName} command without valid directory name ($2)"
+          echo ""
+          echo "Run with -h option for help"
           exit 1
         fi
-        echo "* Scanning $2 with ${PATH_FIND_PATTERN} wildcard for ${commandName} definition files"
+        echo "+ Scanning $2 with ${PATH_FIND_PATTERN} wildcard for ${commandName} definition files"
         # for XXXX in XXXX splited by line
         OLD_IFS=$IFS
         IFS=$'\n'
@@ -273,7 +282,12 @@ parseAndRunJFP(){
       ;;
   esac
 
-  echo "+ ${commandName} block end (next $1)"
+  local nextBlock="(last)"
+  if [ -n "$1" ]
+  then
+    nextBlock="(next $1)"
+  fi
+  echo "* ${commandName} block end $nextBlock"
 }
 
 ###
@@ -283,8 +297,10 @@ parseAndRunJFP(){
 #Global vars based on environment
 if [ -z "${GRAFANA_ENDPOINT}" ]
 then
+  echo ""
   echo "ERROR: GRAFANA_ENDPOINT empty"
-  usage
+  echo ""
+  echo "Run with -h option for help"
   exit 1
 fi
 
@@ -308,8 +324,10 @@ do
       ;;
     *)
       # Optionst without command or unknown command
-      echo "$1 is an unknown command"
-      usage
+      echo ""
+      echo "ERROR: $1 is an unknown command"
+      echo ""
+      echo "Run with -h option for help"
       exit 1
       ;;
   esac
