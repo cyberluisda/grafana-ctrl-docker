@@ -173,6 +173,113 @@ newUsers(){
   done
 }
 
+###
+# Function to avoid copy+paste code for commands wich allowe options are
+# --json, --file and --path. Suported commands are new-datasources,
+# new-users and import-dashboards
+##
+# $1 command to be executed (new-datasource, new-users, import-dashboards)
+# $2 .. $n-m compatible options: --json JSON_BODY, --file JSON_FILE, --path
+# $n-m+1 .. $n Other optiosn to ignore
+##
+# Global variables (Read):
+#   PATH_FIND_PATTERN: Pattern to filter files in --path option
+# Global variables (SAVE):
+#   N_ARGS_USED: Set number of argumentes used (n-m), this can be usefull if you
+#   are using this function in a loop iterating over args and you need shift
+#   argumentes procesed
+parseAndRunJFP(){
+  local commandName="$1"
+  # Parsing options for this command and execute
+  if [ -z "$2" ]
+  then
+    echo "Command '${commandName}' without options"
+    usage
+    exit 1
+  fi
+  shift
+
+
+  # Initialize vars
+  N_ARGS_USED=1 # 1 because whe skip $1, commandName
+  declare -a fileList
+  local index=0
+  local stop=no
+  while [ "$stop" == "no"  ]
+  do
+    case $1 in
+      --json )
+        if [ -z "$2" ]
+        then
+          echo "Option --json in ${commandName} command without payload"
+          usage
+          exit 1
+        fi
+        fileTemp="$(mktemp)"
+        echo "$2" > "$fileTemp"
+        fileList[$index]="$fileTemp"
+        ;;
+      --file )
+        if [[ -z "$2" || ! -f "$2" ]]
+        then
+          echo "Option --file in ${commandName} command without valid filename"
+          usage
+          exit 1
+        fi
+        fileList[$index]="$2"
+        ;;
+      --path )
+        if [[ -z "$2" || ! -d "$2" ]]
+        then
+          echo "Option --path in ${commandName} command without valid directory name ($2)"
+          usage
+          exit 1
+        fi
+        echo "* Scanning $2 with ${PATH_FIND_PATTERN} wildcard for ${commandName} definition files"
+        # for XXXX in XXXX splited by line
+        OLD_IFS=$IFS
+        IFS=$'\n'
+        for file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
+        do
+          echo "       - $file"
+          fileList[$index]="${file}"
+          index=$((index + 1))
+        done
+        IFS=$OLD_IFS
+        ;;
+    esac
+    shift 2
+    N_ARGS_USED=$((N_ARGS_USED + 2))
+    index=$((index + 1))
+    if [[ -z "$1" || "$1" != "--json" && "$1" != "--file" && "$1" != "--path" ]]
+    then
+      stop="yes"
+    fi
+  done
+
+  # Run command
+  case ${commandName} in
+    new-datasources )
+      newDatasources "${fileList[@]}"
+      ;;
+    new-users )
+      newUsers "${fileList[@]}"
+      ;;
+    import-dashboards )
+      importDashboards "${fileList[@]}"
+      ;;
+    *)
+      echo "WARN: command ${commandName} is not supported in parseAndRunJFP. IGNORED"
+      ;;
+  esac
+
+  echo "+ ${commandName} block end (next $1)"
+}
+
+###
+# MAIN BODY
+###
+
 #Global vars based on environment
 if [ -z "${GRAFANA_ENDPOINT}" ]
 then
@@ -195,216 +302,9 @@ do
       usage
       exit 0
       ;;
-    new-datasources )
-      # Parsing options for this command and execute
-      if [ -z "$2" ]
-      then
-        echo "Command 'new-datasources' without options"
-        usage
-        exit 1
-      fi
-      shift
-
-      # Initialize (and clean) array
-      unset fileList
-      declare -a fileList
-      index=0
-      stop=no
-      while [ "$stop" == "no"  ]
-      do
-        case $1 in
-          --json )
-            if [ -z "$2" ]
-            then
-              echo "Option --json in new-datasources command without payload"
-              usage
-              exit 1
-            fi
-            fileTemp="$(mktemp)"
-            echo "$2" > "$fileTemp"
-            fileList[$index]="$fileTemp"
-            ;;
-          --file )
-            if [[ -z "$2" || ! -f "$2" ]]
-            then
-              echo "Option --file in new-datasources command without valid filename"
-              usage
-              exit 1
-            fi
-            fileList[$index]="$2"
-            ;;
-          --path )
-            if [[ -z "$2" || ! -d "$2" ]]
-            then
-              echo "Option --path in new-datasources command without valid directory name ($2)"
-              usage
-              exit 1
-            fi
-            echo "* Scanning $2 with ${PATH_FIND_PATTERN} wildcard for new-datasources definition files"
-            # for XXXX in XXXX splited by line
-            OLD_IFS=$IFS
-            IFS=$'\n'
-            for file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
-            do
-              echo "       - $file"
-              fileList[$index]="${file}"
-              index=$((index + 1))
-            done
-            IFS=$OLD_IFS
-            ;;
-        esac
-        shift 2
-        index=$((index + 1))
-        if [[ -z "$1" || "$1" != "--json" && "$1" != "--file" && "$1" != "--path" ]]
-        then
-          stop="yes"
-        fi
-      done
-
-      # Run command
-      newDatasources "${fileList[@]}"
-      echo "+ new-users block end (next $1)"
-      ;;
-    import-dashboards )
-      # Parsing options for this command and execute
-      if [ -z "$2" ]
-      then
-        echo "Command 'import-dashboards' without options"
-        usage
-        exit 1
-      fi
-      shift
-
-      # Initialize (and clean) array
-      unset fileList
-      declare -a fileList
-      index=0
-      stop=no
-      while [ "$stop" == "no"  ]
-      do
-        case $1 in
-          --json )
-            if [ -z "$2" ]
-            then
-              echo "Option --json in import-dashboards command without payload"
-              usage
-              exit 1
-            fi
-            fileTemp="$(mktemp)"
-            echo "$2" > "$fileTemp"
-            fileList[$index]="$fileTemp"
-            ;;
-          --file )
-            if [[ -z "$2" || ! -f "$2" ]]
-            then
-              echo "Option --file in import-dashboards command without valid filename"
-              usage
-              exit 1
-            fi
-            fileList[$index]="$2"
-            ;;
-          --path )
-            if [[ -z "$2" || ! -d "$2" ]]
-            then
-              echo "Option --path in import-dashboards command without valid directory name ($2)"
-              usage
-              exit 1
-            fi
-            echo "* Scanning $2 with ${PATH_FIND_PATTERN} wildcard for import-dashboards definition files"
-            # for XXXX in XXXX splited by line
-            OLD_IFS=$IFS
-            IFS=$'\n'
-            for file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
-            do
-              echo "       - $file"
-              fileList[$index]="${file}"
-              index=$((index + 1))
-            done
-            IFS=$OLD_IFS
-            ;;
-        esac
-        shift 2
-        index=$((index + 1))
-        if [[ -z "$1" || "$1" != "--json" && "$1" != "--file" && "$1" != "--path" ]]
-        then
-          stop="yes"
-        fi
-      done
-
-      # Run command
-      importDashboards "${fileList[@]}"
-      echo "+ new-users block end (next $1)"
-      ;;
-    new-users )
-      # Parsing options for this command and execute
-      if [ -z "$2" ]
-      then
-        echo "Command 'new-users' without options"
-        usage
-        exit 1
-      fi
-      shift
-
-      # Initialize (and clean) array
-      unset fileList
-      declare -a fileList
-      index=0
-      stop=no
-      while [ "$stop" == "no"  ]
-      do
-        case $1 in
-          --json )
-            if [ -z "$2" ]
-            then
-              echo "Option --json in new-users command without payload"
-              usage
-              exit 1
-            fi
-            fileTemp="$(mktemp)"
-            echo "$2" > "$fileTemp"
-            fileList[$index]="$fileTemp"
-            ;;
-          --file )
-            if [[ -z "$2" || ! -f "$2" ]]
-            then
-              echo "Option --file in new-users command without valid filename"
-              usage
-              exit 1
-            fi
-            fileList[$index]="$2"
-            ;;
-          --path )
-            if [[ -z "$2" || ! -d "$2" ]]
-            then
-              echo "Option --path in new-users command without valid directory name ($2)"
-              usage
-              exit 1
-            fi
-            echo "* Scanning $2 with ${PATH_FIND_PATTERN} egrep filter for new-users definition files"
-            # for XXXX in XXXX splited by line
-            OLD_IFS=$IFS
-            IFS=$'\n'
-            for file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
-            do
-              echo "       - $file"
-              fileList[$index]="${file}"
-              index="$((index + 1))"
-            done
-            IFS=$OLD_IFS
-            ;;
-        esac
-        shift 2
-        index=$((index + 1))
-
-        if [[ -z "$1" || "$1" != "--json" && "$1" != "--file" && "$1" != "--path" ]]
-        then
-          stop="yes"
-        fi
-      done
-
-      # Run command
-      newUsers "${fileList[@]}"
-      echo "+ new-users block end (next $1)"
+    new-datasources|import-dashboards|new-users )
+      parseAndRunJFP "$@"
+      shift ${N_ARGS_USED}
       ;;
     *)
       # Optionst without command or unknown command
