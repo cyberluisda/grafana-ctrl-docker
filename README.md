@@ -82,6 +82,12 @@ basic description. For more info run docker with `--help` option:
 
 # JSON expected formats #
 
+Before describe allowed _JSON_ formats is important to note that values of
+**environment variables** can be replaced _on-fly_ **in files**.
+
+Any string with `{{ENV_VAR_NAME}}` found in any json file will be replaced by
+value of `ENV_VAR_NAME` **only** if `ENV_VAR_NAME` is defined.
+
 ## New user
 
 This is an example of a valid JSON to create new user:

@@ -12,6 +12,8 @@ services:
     #   GRAFANA_ENDPOINT: "http://grafana:3000"
     #   # ENV GRAFANA_AUTH_BEARER:
     #   GRAFANA_AUTH_USERPASSWD: "admin:admin1234"
+      # Replacement values "in-files"
+      PASSWORD_FOR_KUSER: "kpassword_from_env"
     volumes:
       - ./test:/data
     command:
