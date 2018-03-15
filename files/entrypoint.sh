@@ -81,8 +81,13 @@ $ME COMMAND_1 OPTIONS_1 ... COMMAND_N OPTIONS_N
 
       PATH_FIND_PATTERN: egrep pattern to apply filter when find for files with
         '--path' and similar options: Default value ${PATH_FIND_PATTERN}
-EOD
 
+    PARAMETRIZE JSON FILES "ON-FLY"
+
+      You can add parametrization in json files using environment variables. All
+      values found in files that match with {{ENV_VAR_NAME}} will be replaced by
+      value of \${ENV_VAR_NAME} ONLY if ENV_VAR_NAME is defined (not empty).
+EOD
 }
 
 ##
@@ -144,6 +149,46 @@ ccurl(){
     | jq -C '.'
   fi
   echo "       --------"
+}
+
+##
+# Replace {{ENV_VAR_NAME}} strings with value of $ENV_VAR_NAME in a new copy of a file
+##
+# $1 file path
+##
+# Return new path of file if was changed or original file if was not changed
+replaceEnvVarsInFile(){
+  if [ -n "$1" ]
+  then
+    local fileName="$1"
+    # Extract var names {{XXXX}}, {{YYYY}}, etc
+    local findReplacements=$(cat "${fileName}" | egrep -oe '\{\{[^\}]+\}\}')
+    if [ -n "$findReplacements" ]
+    then
+      newFile=$(mktemp)
+      cat "${fileName}" > "${newFile}"
+      for cand in $findReplacements
+      do
+        # Extract varName
+        local varName=$(echo -n "$cand" | tr -d '}{')
+        # Use eval to resolve $$varName to $VALUE_OF_varName
+        eval "[ -n \"\$${varName}\" ] \
+          && sed -i \"s@{{${varName}}}@\$${varName}@\" ${newFile}"
+      done
+      local origSha=$(cat ${fileName} | md5sum)
+      local newSha=$(cat ${newFile} | md5sum)
+      if [ "$origSha" == "$newSha" ]
+      then
+        echo -n "$fileName"
+        rm -f "$newFile"
+      else
+        echo -n "$newFile"
+      fi
+    else
+      echo -n "$fileName"
+      rm -f "$newFile"
+    fi
+  fi
 }
 
 newDatasources(){
@@ -266,16 +311,27 @@ parseAndRunJFP(){
     fi
   done
 
+  # Replace env vars in files
+  declare -a fileListEdited
+  for ((i=0;i<${#fileList[@]};i++))
+  do
+    fileListEdited[$i]=$(replaceEnvVarsInFile "${fileList[$i]}")
+    if [ "${fileList[$i]}" != "${fileListEdited[$i]}" ]
+    then
+      echo "       + Values of environment variables replaced: ${fileList[$i]} -> ${fileListEdited[$i]}"
+    fi
+
+  done
   # Run command
   case ${commandName} in
     new-datasources )
-      newDatasources "${fileList[@]}"
+      newDatasources "${fileListEdited[@]}"
       ;;
     new-users )
-      newUsers "${fileList[@]}"
+      newUsers "${fileListEdited[@]}"
       ;;
     import-dashboards )
-      importDashboards "${fileList[@]}"
+      importDashboards "${fileListEdited[@]}"
       ;;
     *)
       echo "WARN: command ${commandName} is not supported in parseAndRunJFP. IGNORED"
