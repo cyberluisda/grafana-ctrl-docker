@@ -175,8 +175,8 @@ replaceEnvVarsInFile(){
         eval "[ -n \"\$${varName}\" ] \
           && sed -i \"s@{{${varName}}}@\$${varName}@\" ${newFile}"
       done
-      local origSha=$(cat ${fileName} | md5sum)
-      local newSha=$(cat ${newFile} | md5sum)
+      local origSha=$(cat "${fileName}" | md5sum)
+      local newSha=$(cat "${newFile}" | md5sum)
       if [ "$origSha" == "$newSha" ]
       then
         echo -n "$fileName"
