@@ -1,0 +1,6 @@
+{
+  "name": "Other User",
+  "email": "other.user@no-host.com",
+  "login": "otheruser",
+  "password": "{{PASSOWRD_FOR_OTHER_USER}}"
+}

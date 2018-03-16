@@ -14,6 +14,7 @@ services:
     #   GRAFANA_AUTH_USERPASSWD: "admin:admin1234"
       # Replacement values "in-files"
       PASSWORD_FOR_KUSER: "kpassword_from_env"
+      PASSOWRD_FOR_OTHER_USER: "otherpassword"
     volumes:
       - ./test:/data
     command:
