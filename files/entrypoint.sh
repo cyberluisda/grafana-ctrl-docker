@@ -102,15 +102,15 @@ EOD
 #  GRAFANA_AUTH_USERPASSWD. If defined use user:password as basic authentication with Grafana
 
 ccurl(){
-  local method="POST"
+  local ep_gcd_method="POST"
   if [ -n "$3" ]
   then
-    method="$3"
+    ep_gcd_method="$3"
   fi
-  local url="${GRAFANA_ENDPOINT}$1"
-  local fileInput="$2"
+  local ep_gcd_url="${GRAFANA_ENDPOINT}$1"
+  local ep_gcd_fileInput="$2"
 
-  echo "       - curl -X$method -d @${fileInput} ${url}"
+  echo "       - curl -X$ep_gcd_method -d @${ep_gcd_fileInput} ${ep_gcd_url}"
   echo "       --------"
 
   if [ -n "${GRAFANA_AUTH_BEARER}" ]
@@ -121,9 +121,9 @@ ccurl(){
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       -H 'Authorization: Bearer ${GRAFANA_AUTH_BEARER}' \
-      -X "$method" \
-      --data "@${fileInput}" \
-      "${url}" \
+      -X "$ep_gcd_method" \
+      --data "@${ep_gcd_fileInput}" \
+      "${ep_gcd_url}" \
     | jq -C '.'
   elif [ -n "${GRAFANA_AUTH_USERPASSWD}" ]
   then
@@ -133,9 +133,9 @@ ccurl(){
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       -u "${GRAFANA_AUTH_USERPASSWD}" \
-      --data "@${fileInput}" \
-      -X "$method" \
-      "${url}" \
+      --data "@${ep_gcd_fileInput}" \
+      -X "$ep_gcd_method" \
+      "${ep_gcd_url}" \
     | jq -C '.'
   else
     # Curl without auth
@@ -143,9 +143,9 @@ ccurl(){
       ${CURL_OPTIONS} \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
-      -X "$method" \
-      --data "@${fileInput}" \
-      "${url}" \
+      -X "$ep_gcd_method" \
+      --data "@${ep_gcd_fileInput}" \
+      "${ep_gcd_url}" \
     | jq -C '.'
   fi
   echo "       --------"
@@ -160,33 +160,33 @@ ccurl(){
 replaceEnvVarsInFile(){
   if [ -n "$1" ]
   then
-    local fileName="$1"
+    local ep_gcd_fileName="$1"
     # Extract var names {{XXXX}}, {{YYYY}}, etc
-    local findReplacements=$(cat "${fileName}" | egrep -oe '\{\{[^\}]+\}\}')
-    if [ -n "$findReplacements" ]
+    local ep_gcd_findReplacements=$(cat "${ep_gcd_fileName}" | egrep -oe '\{\{[^\}]+\}\}')
+    if [ -n "$ep_gcd_findReplacements" ]
     then
-      newFile=$(mktemp)
-      cat "${fileName}" > "${newFile}"
-      for cand in $findReplacements
+      local ep_gcd_newFile=$(mktemp)
+      cat "${ep_gcd_fileName}" > "${ep_gcd_newFile}"
+      for ep_gdc_cand in $ep_gcd_findReplacements
       do
         # Extract varName
-        local varName=$(echo -n "$cand" | tr -d '}{')
-        # Use eval to resolve $$varName to $VALUE_OF_varName
-        eval "[ -n \"\$${varName}\" ] \
-          && sed -i \"s@{{${varName}}}@\$${varName}@\" ${newFile}"
+        local ep_gdc_varName=$(echo -n "$ep_gdc_cand" | tr -d '}{')
+        # Use eval to resolve $$ep_gdc_varName to $VALUE_OF_ep_gdc_varName
+        eval "[ -n \"\$${ep_gdc_varName}\" ] \
+          && sed -i \"s@{{${ep_gdc_varName}}}@\$${ep_gdc_varName}@\" ${ep_gcd_newFile}"
       done
-      local origSha=$(cat "${fileName}" | md5sum)
-      local newSha=$(cat "${newFile}" | md5sum)
-      if [ "$origSha" == "$newSha" ]
+      local ep_gdc_origSha=$(cat "${ep_gcd_fileName}" | md5sum)
+      local ep_gdc_newSha=$(cat "${ep_gcd_newFile}" | md5sum)
+      if [ "$ep_gdc_origSha" == "$ep_gdc_newSha" ]
       then
-        echo -n "$fileName"
-        rm -f "$newFile"
+        echo -n "$ep_gcd_fileName"
+        rm -f "$ep_gcd_newFile"
       else
-        echo -n "$newFile"
+        echo -n "$ep_gcd_newFile"
       fi
     else
-      echo -n "$fileName"
-      rm -f "$newFile"
+      echo -n "$ep_gcd_fileName"
+      rm -f "$ep_gcd_newFile"
     fi
   fi
 }
@@ -234,13 +234,13 @@ newUsers(){
 #   are using this function in a loop iterating over args and you need shift
 #   argumentes procesed
 parseAndRunJFP(){
-  local commandName="$1"
-  echo "* ${commandName} block begin"
+  local ep_gcd_commandName="$1"
+  echo "* ${ep_gcd_commandName} block begin"
   # Parsing options for this command and execute
   if [ -z "$2" ]
   then
     echo ""
-    echo "ERROR: Command '${commandName}' without options"
+    echo "ERROR: Command '${ep_gcd_commandName}' without options"
     echo ""
     echo "Run with -h option for help"
     exit 1
@@ -249,101 +249,101 @@ parseAndRunJFP(){
 
 
   # Initialize vars
-  N_ARGS_USED=1 # 1 because whe skip $1, commandName
-  declare -a fileList
-  local index=0
-  local stop=no
-  while [ "$stop" == "no"  ]
+  N_ARGS_USED=1 # 1 because whe skip $1, ep_gcd_commandName
+  declare -a ep_gcd_fileList
+  local ep_gdc_index=0
+  local ep_gdc_stop=no
+  while [ "$ep_gdc_stop" == "no"  ]
   do
     case $1 in
       --json )
         if [ -z "$2" ]
         then
           echo ""
-          echo "ERROR: Option --json in ${commandName} command without payload"
+          echo "ERROR: Option --json in ${ep_gcd_commandName} command without payload"
           echo ""
           echo "Run with -h option for help"
           exit 1
         fi
         fileTemp="$(mktemp)"
         echo "$2" > "$fileTemp"
-        fileList[$index]="$fileTemp"
+        ep_gcd_fileList[$ep_gdc_index]="$fileTemp"
         ;;
       --file )
         if [[ -z "$2" || ! -f "$2" ]]
         then
           echo ""
-          echo "ERROR: Option --file in ${commandName} command without valid filename ($2)"
+          echo "ERROR: Option --file in ${ep_gcd_commandName} command without valid filename ($2)"
           echo ""
           echo "Run with -h option for help"
           exit 1
         fi
-        fileList[$index]="$2"
+        ep_gcd_fileList[$ep_gdc_index]="$2"
         ;;
       --path )
         if [[ -z "$2" || ! -d "$2" ]]
         then
           echo ""
-          echo "ERROR: Option --path in ${commandName} command without valid directory name ($2)"
+          echo "ERROR: Option --path in ${ep_gcd_commandName} command without valid directory name ($2)"
           echo ""
           echo "Run with -h option for help"
           exit 1
         fi
-        echo "+ Scanning $2 with ${PATH_FIND_PATTERN} wildcard for ${commandName} definition files"
+        echo "+ Scanning $2 with ${PATH_FIND_PATTERN} wildcard for ${ep_gcd_commandName} definition files"
         # for XXXX in XXXX splited by line
         OLD_IFS=$IFS
         IFS=$'\n'
-        for file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
+        for ep_gdc_file in $(find $2 -type f -maxdepth 1 | egrep -e "${PATH_FIND_PATTERN}")
         do
-          echo "       - $file"
-          fileList[$index]="${file}"
-          index=$((index + 1))
+          echo "       - $ep_gdc_file"
+          ep_gcd_fileList[$ep_gdc_index]="${ep_gdc_file}"
+          ep_gdc_index=$((ep_gdc_index + 1))
         done
         IFS=$OLD_IFS
         ;;
     esac
     shift 2
     N_ARGS_USED=$((N_ARGS_USED + 2))
-    index=$((index + 1))
+    ep_gdc_index=$((ep_gdc_index + 1))
     if [[ -z "$1" || "$1" != "--json" && "$1" != "--file" && "$1" != "--path" ]]
     then
-      stop="yes"
+      ep_gdc_stop="yes"
     fi
   done
 
   # Replace env vars in files
-  declare -a fileListEdited
-  for ((i=0;i<${#fileList[@]};i++))
+  declare -a ep_gdc_fileListEdited
+  for ((ep_gdc_i=0;ep_gdc_i<${#ep_gcd_fileList[@]};ep_gdc_i++))
   do
-    fileListEdited[$i]=$(replaceEnvVarsInFile "${fileList[$i]}")
-    if [ "${fileList[$i]}" != "${fileListEdited[$i]}" ]
+    ep_gdc_fileListEdited[$ep_gdc_i]=$(replaceEnvVarsInFile "${ep_gcd_fileList[$ep_gdc_i]}")
+    if [ "${ep_gcd_fileList[$ep_gdc_i]}" != "${ep_gdc_fileListEdited[$ep_gdc_i]}" ]
     then
-      echo "       + Values of environment variables replaced: ${fileList[$i]} -> ${fileListEdited[$i]}"
+      echo "       + Values of environment variables replaced: ${ep_gcd_fileList[$ep_gdc_i]} -> ${ep_gdc_fileListEdited[$ep_gdc_i]}"
     fi
 
   done
   # Run command
-  case ${commandName} in
+  case ${ep_gcd_commandName} in
     new-datasources )
-      newDatasources "${fileListEdited[@]}"
+      newDatasources "${ep_gdc_fileListEdited[@]}"
       ;;
     new-users )
-      newUsers "${fileListEdited[@]}"
+      newUsers "${ep_gdc_fileListEdited[@]}"
       ;;
     import-dashboards )
-      importDashboards "${fileListEdited[@]}"
+      importDashboards "${ep_gdc_fileListEdited[@]}"
       ;;
     *)
-      echo "WARN: command ${commandName} is not supported in parseAndRunJFP. IGNORED"
+      echo "WARN: command ${ep_gcd_commandName} is not supported in parseAndRunJFP. IGNORED"
       ;;
   esac
 
-  local nextBlock="(last)"
+  local ep_gdc_nextBlock="(last)"
   if [ -n "$1" ]
   then
-    nextBlock="(next $1)"
+    ep_gdc_nextBlock="(next $1)"
   fi
-  echo "* ${commandName} block end $nextBlock"
+  echo "* ${ep_gcd_commandName} block end $ep_gdc_nextBlock"
 }
 
 ###
