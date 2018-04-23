@@ -77,6 +77,11 @@ $ME COMMAND_1 OPTIONS_1 ... COMMAND_N OPTIONS_N
         connection from grafana (TCP check). See
         https://github.com/vishnubob/wait-for-it/ for more informatio
 
+      GRAFANA_WAIT_PATH: Path of url used to check if Grafana service is up. It
+        will have effect only if GRAFANA_WAIT_TIMEOUT, and Grafana server should
+        return HTTP 200 status code to request without any authentication method.
+        Default value '/login'
+
       CURL_OPTIONS: Common options to use with curl. By default ${CURL_OPTIONS}
 
       PATH_FIND_PATTERN: egrep pattern to apply filter when find for files with
@@ -362,9 +367,7 @@ fi
 
 if [ -n "${GRAFANA_WAIT_TIMEOUT}" ]
 then
-  # Get host port
-  hostPort=$(echo "$GRAFANA_ENDPOINT" | sed -Ee 's@https?://@@')
-  wait-for-it -t ${GRAFANA_WAIT_TIMEOUT} "$hostPort"
+  dockerize -timeout ${GRAFANA_WAIT_TIMEOUT}s -wait "${GRAFANA_ENDPOINT}${GRAFANA_WAIT_PATH:-/login}"
 fi
 
 while [ -n "$1" ]

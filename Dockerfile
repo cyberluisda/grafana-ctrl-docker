@@ -4,11 +4,11 @@ LABEL maintainer='Luis David Barrios <cyberluisda@gmail.com>'
 
 # Install software required
 RUN apk --no-cache add bash jq
-# WAIT FOR IT
-RUN curl \
-    -sLko /usr/bin/wait-for-it \
-    https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
-  && chmod a+x /usr/bin/wait-for-it
+# DOCKERIZE
+ENV DOCKERIZE_VERSION v0.6.1
+RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 # Environmet variables (used for config)
 ENV GRAFANA_ENDPOINT "http://grafana:3000"
